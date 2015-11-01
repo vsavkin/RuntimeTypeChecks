@@ -1,36 +1,14 @@
 import * as rm from 'reflect-metadata';
 var x = rm; // enable reflect-metadata
 
+const METADATA_KEY = "runtime-type-checks:paramchecks";
+
 export function CheckParams() {
   return (type, methodName?, descriptor?) => {
-    if (methodName) {
-      const expectedTypes = Reflect.getMetadata("design:paramtypes", type, methodName);
-      const customChecks = Reflect.getMetadata("runtime-type-checks:paramchecks", type, methodName);
-      const checks = new CreateChecks(type.constructor, methodName, expectedTypes, customChecks).createParamsCheck();
-
-      return {
-        value: (...args) => {
-          assert(checks, args);
-          return descriptor.value(...args);
-        },
-        writeable: descriptor.writable,
-        enumerable: descriptor.enumerable,
-        configurable: descriptor.configurable
-      };
-
-    } else {
-      const expectedTypes = Reflect.getMetadata("design:paramtypes", type);
-      const customChecks = Reflect.getMetadata("runtime-type-checks:paramchecks", type);
-      const checks = new CreateChecks(type, methodName, expectedTypes, customChecks).createParamsCheck();
-
-      function Gen(...args) {
-        assert(checks, args);
-        type.call(this, args);
-      }
-
-      Gen.prototype = Object.create(type.prototype);
-      return Gen;
-    }
+    const expectedTypes = Reflect.getMetadata("design:paramtypes", type, methodName);
+    const customChecks = Reflect.getMetadata(METADATA_KEY, type, methodName);
+    const checks = new CreateChecks(type.constructor, methodName, expectedTypes, customChecks).createParamsCheck();
+    return methodName ? wrapMethod(descriptor, checks) : wrapConstructor(type, checks);
   };
 }
 
@@ -39,28 +17,39 @@ export function CheckReturn({fn}:{fn?:Function} = {}) {
     const expectedType = Reflect.getMetadata("design:returntype", type, methodName);
     const check = new CreateChecks(type, methodName, [expectedType], [fn]).createReturnCheck();
 
-    return {
-      value: (...args) => {
-        const res = descriptor.value(...args);
-        check(res);
-        return res;
-      },
-      writeable: descriptor.writable,
-      enumerable: descriptor.enumerable,
-      configurable: descriptor.configurable
-    };
+    return wrapValue(descriptor, (...args) => {
+      const res = descriptor.value(...args);
+      check(res);
+      return res;
+    });
   };
 }
 
 export function Check({fn}:{fn?:Function} = {}) {
   return (type, fnName, index) => {
-    let customChecks = Reflect.getMetadata("runtime-type-checks:paramchecks", type, fnName);
+    let customChecks = Reflect.getMetadata(METADATA_KEY, type, fnName);
     if (customChecks === undefined) {
       customChecks = [];
-      Reflect.defineMetadata("runtime-type-checks:paramchecks", customChecks, type, fnName);
+      Reflect.defineMetadata(METADATA_KEY, customChecks, type, fnName);
     }
     customChecks[index] = fn;
   };
+}
+
+function wrapMethod(descriptor, checks) {
+  return wrapValue(descriptor, (...args) => {
+    assert(checks, args);
+    return descriptor.value(...args);
+  });
+}
+
+function wrapConstructor(type, checks) {
+  function Gen(...args) {
+    assert(checks, args);
+    type.call(this, args);
+  }
+  Gen.prototype = Object.create(type.prototype);
+  return Gen;
 }
 
 class CreateChecks {
@@ -147,6 +136,15 @@ class CreateChecks {
       return `TypeCheckError when constructing an instance of '${this.type.name}'.`;
     }
   }
+}
+
+function wrapValue(descriptor, value) {
+  return {
+    value: value,
+    writeable: descriptor.writable,
+    enumerable: descriptor.enumerable,
+    configurable: descriptor.configurable
+  };
 }
 
 function assert(checks:Function[], args:any[]):void {
