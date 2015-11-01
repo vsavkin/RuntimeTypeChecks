@@ -20,7 +20,7 @@ describe("RTC:: Integration Specs", () => {
       @CheckParams()
       class Target { constructor(a:Dependency1, b:Dependency2) {} }
 
-      expect(() => new Target(d1, d1)).toThrowError(/The parameter with index 1/);
+      expect(() => new Target(d1, d1)).toThrowError(/The parameter '1'/);
     });
 
     it("should support custom checks", () => {
@@ -29,6 +29,7 @@ describe("RTC:: Integration Specs", () => {
       @CheckParams()
       class Target { constructor(@Check({fn}) a) {} }
 
+      expect(() => new Target("blah")).toThrowError(/TypeCheckError when constructing/);
       expect(() => new Target("blah")).toThrowError(/CustomError/);
       expect(() => new Target("expected")).not.toThrow();
     });
@@ -42,7 +43,7 @@ describe("RTC:: Integration Specs", () => {
 
     it("should throw when a type does not match", () => {
       class Target { @CheckParams() method(a:Dependency1, b:Dependency2){} }
-      expect(() => new Target().method(d1, d1)).toThrowError(/The parameter with index 1/);
+      expect(() => new Target().method(d1, d1)).toThrowError(/The parameter '1'/);
     });
 
     it("should support custom checks", () => {
