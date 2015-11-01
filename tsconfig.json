@@ -1,0 +1,21 @@
+{
+    "compilerOptions": {
+        "module": "commonjs",
+        "target": "es5",
+        "noImplicitAny": false,
+        "outDir": "build",
+        "rootDir": ".",
+        "sourceMap": true,
+        "emitDecoratorMetadata": true,
+        "experimentalDecorators": true
+    },
+    "files": [
+      "src/index.ts",
+      "test/integration.spec.ts",
+      "typings/tsd.d.ts",
+      "node_modules/reflect-metadata/reflect-metadata.d.ts"
+    ],
+    "exclude": [
+        "node_modules"
+    ]
+}
