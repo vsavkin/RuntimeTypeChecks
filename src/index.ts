@@ -147,7 +147,7 @@ class CreateChecks {
   }
 
   private createDefaultReturnErrorMessage(expectedType:Function, arg:any):string {
-    const retPart = `The return value is expected of type '${expectedType.name}', but was '${arg}' of type '${typeName(arg)}'`;
+    const retPart = `The return value is expected of type '${typeName(expectedType)}', but was '${arg}' of type '${typeName(arg)}'`;
     return `${this.errorBasePart()} ${retPart}`;
   }
 
@@ -158,9 +158,9 @@ class CreateChecks {
 
   private errorBasePart():string {
     if (this.methodName !== undefined) {
-      return `TypeCheckError when invoking '${this.methodName}' of ${this.type.name}.`;
+      return `TypeCheckError when invoking '${this.methodName}' of ${typeName(this.type)}.`;
     } else {
-      return `TypeCheckError when constructing an instance of '${this.type.name}'.`;
+      return `TypeCheckError when constructing an instance of '${typeName(this.type)}'.`;
     }
   }
 
@@ -178,7 +178,10 @@ function defaultCheck(arg:any, expectedType:Function, nullable:boolean):boolean 
 }
 
 function typeName(obj):string {
-  return obj === null ? 'null' : obj.constructor.name;
+  if (obj === null) return 'null';
+  if (obj.name) return obj.name;
+  if (obj.constructor.name) return obj.constructor.name;
+  return obj;
 }
 
 function wrapValue(descriptor, value) {
