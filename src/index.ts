@@ -3,6 +3,11 @@ var x = rm; // enable reflect-metadata
 
 const METADATA_KEY = "runtime-type-checks:paramchecks";
 
+export interface CheckConfig {
+  fn?:Function;
+  nullable?:boolean;
+}
+
 export function CheckParams() {
   return (type, methodName?, descriptor?) => {
     const expectedTypes = Reflect.getMetadata("design:paramtypes", type, methodName);
@@ -12,10 +17,10 @@ export function CheckParams() {
   };
 }
 
-export function CheckReturn({fn}:{fn?:Function} = {}) {
+export function CheckReturn(config:CheckConfig = {}) {
   return (type, methodName, descriptor) => {
     const expectedType = Reflect.getMetadata("design:returntype", type, methodName);
-    const check = new CreateChecks(type, methodName, [expectedType], [fn]).createReturnCheck();
+    const check = new CreateChecks(type, methodName, [expectedType], [config]).createReturnCheck();
 
     return wrapValue(descriptor, (...args) => {
       const res = descriptor.value(...args);
@@ -25,14 +30,14 @@ export function CheckReturn({fn}:{fn?:Function} = {}) {
   };
 }
 
-export function Check({fn}:{fn?:Function} = {}) {
+export function Check(config:CheckConfig = {}) {
   return (type, fnName, index) => {
     let customChecks = Reflect.getMetadata(METADATA_KEY, type, fnName);
     if (customChecks === undefined) {
       customChecks = [];
       Reflect.defineMetadata(METADATA_KEY, customChecks, type, fnName);
     }
-    customChecks[index] = fn;
+    customChecks[index] = config;
   };
 }
 
@@ -56,25 +61,27 @@ class CreateChecks {
   constructor(private type:Function,
               private methodName:string,
               private expectedTypes:Function[],
-              private customChecks:Function[]){}
+              private customChecks:CheckConfig[]){}
 
   createParamsCheck():Function[] {
     const res = [];
     for (let i = 0; i < this.expectedTypes.length; ++i) {
-      if (this.customChecks !== undefined && this.customChecks[i] !== undefined) {
-        res.push(this.createCustomParamTypeCheck(i, this.customChecks[i]));
+      if (this.customChecks !== undefined && this.customChecks[i].fn !== undefined) {
+        res.push(this.createCustomParamTypeCheck(i, this.customChecks[i].fn));
       } else {
-        res.push(this.createDefaultParamTypeCheck(i, this.expectedTypes[i]));
+        const nullable = this.customChecks !== undefined && this.customChecks[i].nullable;
+        res.push(this.createDefaultParamTypeCheck(i, this.expectedTypes[i], nullable));
       }
     }
     return res;
   }
 
   createReturnCheck():Function {
-    if (this.customChecks !== undefined && this.customChecks[0] !== undefined) {
-      return this.createCustomReturnTypeCheck(this.customChecks[0]);
+    if (this.customChecks !== undefined && this.customChecks[0].fn !== undefined) {
+      return this.createCustomReturnTypeCheck(this.customChecks[0].fn);
     } else {
-      return this.createDefaultReturnTypeCheck(this.expectedTypes[0]);
+      const nullable = this.customChecks !== undefined && this.customChecks[0].nullable;
+      return this.createDefaultReturnTypeCheck(this.expectedTypes[0], nullable);
     }
   }
 
@@ -86,15 +93,16 @@ class CreateChecks {
     };
   }
 
-  private createDefaultParamTypeCheck(index:number, expectedType:Function):Function {
+  private createDefaultParamTypeCheck(index:number, expectedType:Function, nullable:boolean):Function {
     return arg => {
+      if(nullable && (arg === null || arg === undefined)) return;
       if (!(arg instanceof expectedType))
         throw new Error(this.createDefaultParamErrorMessage(index, expectedType, arg));
     };
   }
 
   private createDefaultParamErrorMessage(index:number, expectedType:Function, arg:any):string {
-    const paramPart = `The parameter '${index}' is expected of type '${expectedType.name}', but was '${arg}' of type '${arg.constructor.name}`;
+    const paramPart = `The parameter '${index}' is expected of type '${expectedType.name}', but was '${arg}' of type '${typeName(arg)}`;
     return `${this.errorBasePart()} ${paramPart}`;
   }
 
@@ -104,8 +112,9 @@ class CreateChecks {
   }
 
 
-  private createDefaultReturnTypeCheck(expectedType:Function):Function {
+  private createDefaultReturnTypeCheck(expectedType:Function, nullable:boolean):Function {
     return arg => {
+      if(nullable && (arg === null || arg === undefined)) return;
       if (!(arg instanceof expectedType))
         throw new Error(this.createDefaultReturnErrorMessage(expectedType, arg));
     };
@@ -120,7 +129,7 @@ class CreateChecks {
   }
 
   private createDefaultReturnErrorMessage(expectedType:Function, arg:any):string {
-    const retPart = `The return value is expected of type '${expectedType.name}', but was '${arg}' of type '${arg.constructor.name}`;
+    const retPart = `The return value is expected of type '${expectedType.name}', but was '${arg}' of type '${typeName(arg)}`;
     return `${this.errorBasePart()} ${retPart}`;
   }
 
@@ -136,6 +145,10 @@ class CreateChecks {
       return `TypeCheckError when constructing an instance of '${this.type.name}'.`;
     }
   }
+}
+
+function typeName(obj):string {
+  return obj === null ? 'null' : obj.constructor.name;
 }
 
 function wrapValue(descriptor, value) {
