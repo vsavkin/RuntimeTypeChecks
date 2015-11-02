@@ -12,7 +12,6 @@ describe("RTC:: Integration Specs", () => {
       class Target { constructor(a:Dependency1) {} }
 
       const t = new Target(d1);
-
       expect(t instanceof Target).toBe(true);
     });
 

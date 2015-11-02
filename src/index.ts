@@ -10,7 +10,7 @@ export interface CheckConfig { fn?:Function; nullable?:boolean;
 export const RuntimeChecks = {enableChecks: true};
 
 export function CheckParams() {
-  return (type, methodName?, descriptor?) => {
+  return (type, methodName?, descriptor?):any => {
     const expectedTypes = Reflect.getMetadata("design:paramtypes", type, methodName);
     const customChecks = Reflect.getMetadata(PARAM_CHECKS_METADATA_KEY, type, methodName);
     const checks = new CreateChecks(type.constructor, methodName, expectedTypes, customChecks).createParamsCheck();
@@ -19,7 +19,7 @@ export function CheckParams() {
 }
 
 export function CheckReturn(config:CheckConfig = {}) {
-  return (type, methodName, descriptor) => {
+  return (type, methodName, descriptor):any => {
     const expectedType = Reflect.getMetadata("design:returntype", type, methodName);
     const check = new CreateChecks(type, methodName, [expectedType], [config]).createReturnCheck();
 
@@ -32,7 +32,7 @@ export function CheckReturn(config:CheckConfig = {}) {
 }
 
 export function Check(config:CheckConfig = {}) {
-  return (type, fnName, index) => {
+  return (type, fnName, index):any => {
     let customChecks = Reflect.getMetadata(PARAM_CHECKS_METADATA_KEY, type, fnName);
     if (customChecks === undefined) {
       customChecks = [];
@@ -121,7 +121,7 @@ class CreateChecks {
   }
 
   private createDefaultParamErrorMessage(index:number, expectedType:Function, arg:any):string {
-    const paramPart = `The parameter '${index}' is expected of type '${expectedType.name}', but was '${arg}' of type '${typeName(arg)}'`;
+    const paramPart = `The parameter '${index}' is expected of type '${typeName(expectedType)}', but was '${arg}' of type '${typeName(arg)}'`;
     return `${this.errorBasePart()} ${paramPart}`;
   }
 
