@@ -1,17 +1,15 @@
 import * as rm from 'reflect-metadata';
 var x = rm; // enable reflect-metadata
 
-const METADATA_KEY = "runtime-type-checks:paramchecks";
+const PARAM_CHECKS_METADATA_KEY = "runtime-type-checks:paramchecks";
+const CUSTOM_CHECK_METADATA_KEY = "runtime-type-checks:customcheck";
 
-export interface CheckConfig {
-  fn?:Function;
-  nullable?:boolean;
-}
+export interface CheckConfig { fn?:Function; nullable?:boolean; }
 
 export function CheckParams() {
   return (type, methodName?, descriptor?) => {
     const expectedTypes = Reflect.getMetadata("design:paramtypes", type, methodName);
-    const customChecks = Reflect.getMetadata(METADATA_KEY, type, methodName);
+    const customChecks = Reflect.getMetadata(PARAM_CHECKS_METADATA_KEY, type, methodName);
     const checks = new CreateChecks(type.constructor, methodName, expectedTypes, customChecks).createParamsCheck();
     return methodName ? wrapMethod(descriptor, checks) : wrapConstructor(type, checks);
   };
@@ -32,12 +30,18 @@ export function CheckReturn(config:CheckConfig = {}) {
 
 export function Check(config:CheckConfig = {}) {
   return (type, fnName, index) => {
-    let customChecks = Reflect.getMetadata(METADATA_KEY, type, fnName);
+    let customChecks = Reflect.getMetadata(PARAM_CHECKS_METADATA_KEY, type, fnName);
     if (customChecks === undefined) {
       customChecks = [];
-      Reflect.defineMetadata(METADATA_KEY, customChecks, type, fnName);
+      Reflect.defineMetadata(PARAM_CHECKS_METADATA_KEY, customChecks, type, fnName);
     }
     customChecks[index] = config;
+  };
+}
+
+export function CustomCheck(fn:Function) {
+  return (type) => {
+    Reflect.defineMetadata(CUSTOM_CHECK_METADATA_KEY, fn, type);
   };
 }
 
@@ -66,11 +70,17 @@ class CreateChecks {
   createParamsCheck():Function[] {
     const res = [];
     for (let i = 0; i < this.expectedTypes.length; ++i) {
+      const et = this.expectedTypes[i];
       if (this.customChecks !== undefined && this.customChecks[i].fn !== undefined) {
         res.push(this.createCustomParamTypeCheck(i, this.customChecks[i].fn));
       } else {
-        const nullable = this.customChecks !== undefined && this.customChecks[i].nullable;
-        res.push(this.createDefaultParamTypeCheck(i, this.expectedTypes[i], nullable));
+        const customTypeCheckFn = this._readTypeCheck(et);
+        if (customTypeCheckFn !== undefined) {
+          res.push(this.createCustomParamTypeCheck(i, customTypeCheckFn));
+        } else {
+          const nullable = this.customChecks !== undefined && this.customChecks[i].nullable;
+          res.push(this.createDefaultParamTypeCheck(i, et, nullable));
+        }
       }
     }
     return res;
@@ -80,8 +90,13 @@ class CreateChecks {
     if (this.customChecks !== undefined && this.customChecks[0].fn !== undefined) {
       return this.createCustomReturnTypeCheck(this.customChecks[0].fn);
     } else {
-      const nullable = this.customChecks !== undefined && this.customChecks[0].nullable;
-      return this.createDefaultReturnTypeCheck(this.expectedTypes[0], nullable);
+      const customTypeCheckFn = this._readTypeCheck(this.expectedTypes[0]);
+      if (customTypeCheckFn !== undefined) {
+        return this.createCustomReturnTypeCheck(customTypeCheckFn);
+      } else {
+        const nullable = this.customChecks !== undefined && this.customChecks[0].nullable;
+        return this.createDefaultReturnTypeCheck(this.expectedTypes[0], nullable);
+      }
     }
   }
 
@@ -144,6 +159,10 @@ class CreateChecks {
     } else {
       return `TypeCheckError when constructing an instance of '${this.type.name}'.`;
     }
+  }
+
+  private _readTypeCheck(type:Function):Function {
+    return Reflect.getMetadata(CUSTOM_CHECK_METADATA_KEY, type);
   }
 }
 

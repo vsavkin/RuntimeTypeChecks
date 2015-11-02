@@ -1,4 +1,4 @@
-import {CheckParams, Check, CheckReturn} from '../src/index';
+import {CheckParams, Check, CheckReturn, CustomCheck} from '../src/index';
 
 describe("RTC:: Integration Specs", () => {
   class Dependency1 {}
@@ -46,6 +46,17 @@ describe("RTC:: Integration Specs", () => {
       class Target { constructor(@Check({nullable:true}) a:Dependency1) {} }
 
       expect(() => new Target(null)).not.toThrow();
+    });
+
+    it("should use custom type check when available", () => {
+      @CustomCheck(t => t.value !== "expected" ? "Invalid" : null)
+      class Dependency { constructor(private value:any){}; }
+
+      @CheckParams()
+      class Target { constructor(d:Dependency) {} }
+
+      expect(() => new Target(new Dependency("invalid"))).toThrowError(/The parameter '0'/);
+      expect(() => new Target(new Dependency("expected"))).not.toThrow();
     });
   });
 
@@ -96,6 +107,16 @@ describe("RTC:: Integration Specs", () => {
     it("should throw when given null", () => {
       class Target { @CheckReturn({nullable:true}) method():Dependency1{ return null; } }
       expect(() => new Target().method()).not.toThrow();
+    });
+
+    it("should use custom type check when available", () => {
+      @CustomCheck(t => t.value !== "expected" ? "Invalid" : null)
+      class Dependency { constructor(private value:any){}; }
+
+      class Target { @CheckReturn() method(v):Dependency { return v; } }
+
+      expect(() => new Target().method(new Dependency("invalid"))).toThrowError(/The return/);
+      expect(() => new Target().method(new Dependency("expected"))).not.toThrow();
     });
   });
 });
