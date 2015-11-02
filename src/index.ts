@@ -6,6 +6,8 @@ const CUSTOM_CHECK_METADATA_KEY = "runtime-type-checks:customcheck";
 
 export interface CheckConfig { fn?:Function; nullable?:boolean; }
 
+export const RuntimeChecks = {enableChecks: true};
+
 export function CheckParams() {
   return (type, methodName?, descriptor?) => {
     const expectedTypes = Reflect.getMetadata("design:paramtypes", type, methodName);
@@ -22,7 +24,7 @@ export function CheckReturn(config:CheckConfig = {}) {
 
     return wrapValue(descriptor, (...args) => {
       const res = descriptor.value(...args);
-      check(res);
+      assertReturn(check, res);
       return res;
     });
   };
@@ -47,14 +49,14 @@ export function CustomCheck(fn:Function) {
 
 function wrapMethod(descriptor, checks) {
   return wrapValue(descriptor, (...args) => {
-    assert(checks, args);
+    assertArgs(checks, args);
     return descriptor.value(...args);
   });
 }
 
 function wrapConstructor(type, checks) {
   function Gen(...args) {
-    assert(checks, args);
+    assertArgs(checks, args);
     type.call(this, args);
   }
   Gen.prototype = Object.create(type.prototype);
@@ -179,8 +181,14 @@ function wrapValue(descriptor, value) {
   };
 }
 
-function assert(checks:Function[], args:any[]):void {
+function assertArgs(checks:Function[], args:any[]):void {
+  if (! RuntimeChecks.enableChecks) return;
   for (let i = 0; i < args.length; ++i) {
     checks[i](args[i]);
   }
+}
+
+function assertReturn(check:Function, arg:any):void {
+  if (! RuntimeChecks.enableChecks) return;
+  check(arg);
 }

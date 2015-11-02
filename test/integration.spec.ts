@@ -1,4 +1,4 @@
-import {CheckParams, Check, CheckReturn, CustomCheck} from '../src/index';
+import {CheckParams, Check, CheckReturn, CustomCheck, RuntimeChecks} from '../src/index';
 
 describe("RTC:: Integration Specs", () => {
   class Dependency1 {}
@@ -57,6 +57,15 @@ describe("RTC:: Integration Specs", () => {
 
       expect(() => new Target(new Dependency("invalid"))).toThrowError(/The parameter '0'/);
       expect(() => new Target(new Dependency("expected"))).not.toThrow();
+    });
+
+    it("should not run the checks when disabled", () => {
+      RuntimeChecks.enableChecks = false;
+      @CheckParams()
+      class Target { constructor(a:Dependency1, b:Dependency2) {} }
+
+      expect(() => new Target(d1, d1)).not.toThrow();
+      RuntimeChecks.enableChecks = true;
     });
   });
 
@@ -117,6 +126,15 @@ describe("RTC:: Integration Specs", () => {
 
       expect(() => new Target().method(new Dependency("invalid"))).toThrowError(/The return/);
       expect(() => new Target().method(new Dependency("expected"))).not.toThrow();
+    });
+
+    it("should not run the checks when disabled", () => {
+      RuntimeChecks.enableChecks = false;
+
+      class Target { @CheckReturn() method():Dependency1{ return d2; } }
+      expect(() => new Target().method()).not.toThrow();
+
+      RuntimeChecks.enableChecks = true;
     });
   });
 });
