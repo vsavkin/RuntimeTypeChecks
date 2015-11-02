@@ -67,6 +67,45 @@ describe("RTC:: Integration Specs", () => {
       expect(() => new Target(d1, d1)).not.toThrow();
       RuntimeChecks.enableChecks = true;
     });
+
+    it("should handle a case when no type and no check provided", () => {
+      @CheckParams()
+      class Target { constructor(a) {} }
+
+      expect(() => new Target(d1)).not.toThrow();
+    });
+
+    it("should handle number", () => {
+      @CheckParams()
+      class Target { constructor(a:number) {} }
+
+      expect(() => new Target(234)).not.toThrow();
+      expect(() => new Target(<any>"str")).toThrow();
+    });
+
+    it("should handle string", () => {
+      @CheckParams()
+      class Target { constructor(a:string) {} }
+
+      expect(() => new Target("str")).not.toThrow();
+      expect(() => new Target(<any>234)).toThrow();
+    });
+
+    it("should handle boolean", () => {
+      @CheckParams()
+      class Target { constructor(a:boolean) {} }
+
+      expect(() => new Target(true)).not.toThrow();
+      expect(() => new Target(<any>234)).toThrow();
+    });
+
+    it("should handle arrays", () => {
+      @CheckParams()
+      class Target { constructor(a:any[]) {} }
+
+      expect(() => new Target([])).not.toThrow();
+      expect(() => new Target(<any>234)).toThrow();
+    });
   });
 
   describe("method params", () => {
