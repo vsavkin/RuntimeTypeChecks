@@ -9,7 +9,7 @@
   "author": "Victor Savkin",
   "license": "MIT",
   "dependencies": {
-    "reflect-metadata": "^0.1.2",
+    "reflect-metadata": "^0.1.2"
   },
   "devDependencies": {
     "jasmine-core": "^2.3.4",
