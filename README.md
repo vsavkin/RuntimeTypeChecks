@@ -125,6 +125,32 @@ We may want to disable checks in production or in unit tests to enable mocking. 
 
 Are these checks useful only at the application boundary? Any time we interact with untyped or reflective code, we can add some runtime checks.
 
-## How to Install
+## How to Use (in TypeScript)
 
-...
+Install the module `npm install runtime-type-checks`
+
+Configure TypeScript to emit decorator metadata:
+
+```
+{
+  "compilerOptions": {
+    "module": "commonjs",
+    "target": "es5",
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true
+  },
+  "files": [
+    "my-app.ts"
+  ]
+}
+```
+
+Import from `runtime-type-checks`.
+```
+import {CheckParams} from 'runtime-type-checks';
+
+@CheckParams()
+class MyClass {
+	constructor(a:string) {}
+}
+```
