@@ -1,6 +1,6 @@
 {
   "name": "runtime-type-checks",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "Runtime type checks for JavaScript and TypeScript",
   "main": "index.js",
   "scripts": {
