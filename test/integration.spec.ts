@@ -1,4 +1,4 @@
-import {CheckParams, Check, CheckReturn, CustomCheck, RuntimeChecks} from '../src/index';
+import {CheckParams, Check, CheckReturn, CustomCheck, RuntimeChecks, objectWith, arrayOf} from '../src/index';
 
 describe("RTC:: Integration Specs", () => {
   class Dependency1 {}
@@ -173,6 +173,30 @@ describe("RTC:: Integration Specs", () => {
       expect(() => new Target().method()).not.toThrow();
 
       RuntimeChecks.enableChecks = true;
+    });
+  });
+
+  describe("objectWith", () => {
+    const check = objectWith("field1", "field2");
+
+    it("should not error when an object matches the provided class", () => {
+      expect(check({field1: true, field2: true})).toBeNull();
+    });
+
+    it("should show the field diff", () => {
+      expect(check({field1: true, field3: true})).toEqual("Required properties are missing: field2");
+    });
+  });
+
+  describe("arrayOf", () => {
+    const check = arrayOf(objectWith("field1", "field2"));
+
+    it("should not error when an object matches the provided class", () => {
+      expect(check([{field1: true, field2: true}])).toBeNull();
+    });
+
+    it("should show the field diff", () => {
+      expect(check([{field1: true, field3: true}])).toEqual("Error at index 0. Required properties are missing: field2");
     });
   });
 });

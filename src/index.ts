@@ -48,6 +48,25 @@ export function CustomCheck(fn:Function) {
   };
 }
 
+export function objectWith(...props) {
+  return (obj) => {
+    const missing = props.filter(prop => !obj[prop]);
+    return missing.length > 0 ? `Required properties are missing: ${missing.join(", ")}` : null;
+  };
+}
+
+export function arrayOf(check:Function) {
+  return (array:any[]) => {
+    for (let i = 0; i < array.length; ++i) {
+      const error = check(array[i]);
+      if (error) {
+        return `Error at index ${i}. ${error}`;
+      }
+    }
+    return null;
+  };
+}
+
 function wrapMethod(descriptor, checks) {
   return wrapValue(descriptor, (...args) => {
     assertArgs(checks, args);
